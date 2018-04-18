@@ -1,0 +1,159 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {},
+    "Parameters": {
+        "RemoteAccessCIDR": {
+            "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/([0-9]|[1-2][0-9]|3[0-2]))$",
+            "ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/x",
+            "Description": "Allowed CIDR block for external SSH access to TaskCat",
+            "Type": "String"
+        },
+        "InstanceType": {
+            "AllowedValues": [
+                "t2.medium",
+                "t2.large"
+            ],
+            "ConstraintDescription": "Must contain valid instance type",
+            "Default": "t2.medium",
+            "Description": "Type of EC2 instance for the TaskCat instance",
+            "Type": "String"
+        },
+        "KeyPairName": {
+            "Description": "Name of an existing EC2 KeyPair",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "PublicSubnet": {
+            "Description": "VPC Subnet ID for EC2 Instances",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "VPCID": {
+            "Description": "VPC ID",
+            "Type": "AWS::EC2::VPC::Id"
+        }
+    },
+    "Mappings": {
+        "AWSAMIRegionMap": {
+            "AMI": {
+                "AMZNLINUXHVM": "amzn-ami-hvm-2017.03.1.20170623-x86_64-gp2"
+            },
+            "ap-northeast-1": {
+                "AMZNLINUXHVM": "ami-3bd3c45c"
+            },
+            "ap-northeast-2": {
+                "AMZNLINUXHVM": "ami-e21cc38c"
+            },
+            "ap-south-1": {
+                "AMZNLINUXHVM": "ami-47205e28"
+            },
+            "ap-southeast-1": {
+                "AMZNLINUXHVM": "ami-77af2014"
+            },
+            "ap-southeast-2": {
+                "AMZNLINUXHVM": "ami-10918173"
+            },
+            "ca-central-1": {
+                "AMZNLINUXHVM": "ami-a7aa15c3"
+            },
+            "eu-central-1": {
+                "AMZNLINUXHVM": "ami-82be18ed"
+            },
+            "eu-west-1": {
+                "AMZNLINUXHVM": "ami-d7b9a2b1"
+            },
+            "eu-west-2": {
+                "AMZNLINUXHVM": "ami-ed100689"
+            },
+            "sa-east-1": {
+                "AMZNLINUXHVM": "ami-87dab1eb"
+            },
+            "us-east-1": {
+                "AMZNLINUXHVM": "ami-a4c7edb2"
+            },
+            "us-east-2": {
+                "AMZNLINUXHVM": "ami-8a7859ef"
+            },
+            "us-west-1": {
+                "AMZNLINUXHVM": "ami-327f5352"
+            },
+            "us-west-2": {
+                "AMZNLINUXHVM": "ami-6df1e514"
+            }
+        }
+    },
+    "Resources": {
+        "TaskCatInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "ImageId": {
+                    "Fn::FindInMap": ["AWSAMIRegionMap", {
+                        "Ref": "AWS::Region"
+                    }, "AMZNLINUXHVM"]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "NetworkInterfaces": [{
+                    "DeviceIndex": 0,
+                    "SubnetId": {
+                        "Ref": "PublicSubnet"
+                    },
+                    "GroupSet": [{
+                        "Ref": "TaskCatSG"
+                    }]
+                }],
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": "TaskCat"
+                }],
+                "KeyName": {
+                    "Ref": "KeyPairName"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "", [
+                                "#!/bin/bash -x -e\n",
+                                "yum install python35 python35-pip git -y\n",
+                                "unlink  /usr/bin/python; unlink  /usr/bin/pip\n",
+                                "ln -s /usr/bin/python35 /usr/bin/python\n",
+                                "ln -s  /usr/bin/pip-3.5 /usr/bin/pip; ln -s /usr/bin/pip-3.5 /usr/bin/pip3\n",
+                                "export PATH=$PATH:/usr/local/bin/\n",
+                                "/usr/bin/pip install taskcat ",
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "TaskCatSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enables SSH access to TaskCat Instance",
+                "VpcId": {
+                    "Ref": "VPCID"
+                },
+                "SecurityGroupIngress": [{
+                    "IpProtocol": "tcp",
+                    "FromPort": "22",
+                    "ToPort": "22",
+                    "CidrIp": {
+                        "Ref": "RemoteAccessCIDR"
+                    }
+                }]
+            }
+        }
+    },
+    "Outputs": {
+        "TaskCatInstance": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "TaskCatInstance",
+                    "PublicDnsName"
+                ]
+            },
+            "Description": "Public DNS Name for the TaskCat Instance"
+        }
+    }
+
+}

@@ -1,0 +1,22 @@
+[
+    {
+        "ParameterKey": "InstanceType",
+        "ParameterValue": "t2.medium"
+    },
+    {
+        "ParameterKey": "KeyPairName",
+        "ParameterValue": "tonynv"
+    },
+    {
+        "ParameterKey": "PublicSubnet",
+        "ParameterValue": "subnet-f6f80f9f"
+    },
+    {
+        "ParameterKey": "RemoteAccessCIDR",
+        "ParameterValue": "0.0.0.0/0"
+    },
+    {
+        "ParameterKey": "VPCID",
+        "ParameterValue": "vpc-1daa4274"
+    }
+]
